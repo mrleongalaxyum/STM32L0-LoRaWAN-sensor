@@ -1,0 +1,7 @@
+oslmic.c:36:6:os_init	8	static
+oslmic.c:43:10:os_getTime	8	static
+oslmic.c:48:12:unlinkjob	16	static
+oslmic.c:59:6:os_clearCallback	16	static
+oslmic.c:66:6:os_setCallback	24	static
+oslmic.c:81:6:os_setTimedCallback	32	static
+oslmic.c:103:6:os_runloop	16	static

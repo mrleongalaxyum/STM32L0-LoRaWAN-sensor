@@ -34,7 +34,7 @@
 #include "lmic.h"
 #include "main.h"
 
-#define myTIMER htim4   //  <--------- change to your setup
+#define myTIMER htim21   //  <--------- change to your setup
 #define mySPI hspi1     //  <--------- change to your setup
 
 /*  ************************************** */

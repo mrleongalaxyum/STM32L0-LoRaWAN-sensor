@@ -1,0 +1,12 @@
+debug.c:38:6:debug_init	8	static
+debug.c:48:6:debug_led	16	static
+debug.c:52:6:debug_char	24	static
+debug.c:58:6:debug_hex	16	static
+debug.c:63:6:debug_buf	16	static
+debug.c:72:6:debug_uint	32	static
+debug.c:78:6:debug_int	48	static
+debug.c:85:6:debug_str	16	static
+debug.c:91:6:debug_val	16	static
+debug.c:98:6:debug_valdec	16	static
+debug.c:105:5:debug_fmt	80	static
+debug.c:129:6:debug_event	16	static

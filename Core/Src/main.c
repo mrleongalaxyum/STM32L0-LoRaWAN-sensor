@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "lmic.h"
+#include "debug.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,15 +41,17 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
 
-SPI_HandleTypeDef hspi1;
-
-TIM_HandleTypeDef htim21;
-
-UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+/* Private variables ---------------------------------------------------------*/
+// application router ID (LSBF)  < ------- IMPORTANT
+static const u1_t APPEUI[8]  = {0xB2,0x5C,0x03,0xD0,0x7E,0xD5,0xB3,0x70};
+// unique device ID (LSBF)       < ------- IMPORTANT
+static const u1_t DEVEUI[8]  = {0x06, 0x14,0xA0,0x16,0x20,0xD4,0x8A,0x00};
+
+// device-specific AES key (derived from device EUI)
+static const u1_t DEVKEY[16] = { 0x7A, 0x7F, 0x99, 0x33, 0xD6, 0x59, 0x1D, 0x6E, 0xDA, 0x75, 0x01, 0x19, 0x41, 0x64, 0x21, 0x44 };
 
 /* USER CODE END PV */
 
@@ -65,6 +68,127 @@ static void MX_TIM21_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+// provide application router ID (8 bytes, LSBF)
+void os_getArtEui (u1_t* buf) {
+    memcpy(buf, APPEUI, 8);
+}
+
+// provide device ID (8 bytes, LSBF)
+void os_getDevEui (u1_t* buf) {
+    memcpy(buf, DEVEUI, 8);
+}
+
+// provide device key (16 bytes)
+void os_getDevKey (u1_t* buf) {
+    memcpy(buf, DEVKEY, 16);
+}
+
+void initsensor(){
+	 // Here you init your sensors
+}
+
+void initfunc (osjob_t* j) {
+    // intialize sensor hardware
+    initsensor();
+    // reset MAC state
+    LMIC_reset();
+    // start joining
+    LMIC_startJoining();
+    // init done - onEvent() callback will be invoked...
+}
+
+u2_t readsensor(){
+	u2_t value = 0xDF;    /// read from evrything ...make your own sensor
+	return value;
+}
+
+static osjob_t reportjob;
+
+// report sensor value every minute
+static void reportfunc (osjob_t* j) {
+    // read sensor
+    u2_t val = readsensor();
+    debug_val("val = ", val);
+    // prepare and schedule data for transmission
+    LMIC.frame[0] = val << 8;
+    LMIC.frame[1] = val;
+    LMIC_setTxData2(1, LMIC.frame, 2, 0); // (port 1, 2 bytes, unconfirmed)
+    // reschedule job in 60 seconds
+    os_setTimedCallback(j, os_getTime()+sec2osticks(10), reportfunc);
+}
+
+
+//////////////////////////////////////////////////
+// LMIC EVENT CALLBACK
+//////////////////////////////////////////////////
+
+void onEvent (ev_t ev) {
+    debug_event(ev);
+
+    switch(ev) {
+
+      // network joined, session established
+      case EV_JOINING:
+       	  debug_str("try joining\r\n");
+       	  break;
+      case EV_JOINED:
+          debug_led(1);
+          // kick-off periodic sensor job
+          reportfunc(&reportjob);
+          break;
+      case EV_JOIN_FAILED:
+    	  debug_str("join failed\r\n");
+    	  break;
+      case EV_SCAN_TIMEOUT:
+    	  debug_str("EV_SCAN_TIMEOUT\r\n");
+		  break;
+	  case EV_BEACON_FOUND:
+		  debug_str("EV_BEACON_FOUND\r\n");
+		  break;
+	  case EV_BEACON_MISSED:
+		  debug_str("EV_BEACON_MISSED\r\n");
+		  break;
+	  case EV_BEACON_TRACKED:
+		  debug_str("EV_BEACON_TRACKED\r\n");
+		  break;
+	  case EV_RFU1:
+		  debug_str("EV_RFU1\r\n");
+		  break;
+	  case EV_REJOIN_FAILED:
+		  debug_str("EV_REJOIN_FAILED\r\n");
+		  break;
+	  case EV_TXCOMPLETE:
+		  debug_str("EV_TXCOMPLETE (includes waiting for RX windows)\r\n");
+		  if (LMIC.txrxFlags & TXRX_ACK)
+			  debug_str("Received ack\r\n");
+		  if (LMIC.dataLen) {
+			  debug_str("Received ");
+			  debug_str(LMIC.dataLen);
+			  debug_str(" bytes of payload\r\n");
+		  }
+		  break;
+	  case EV_LOST_TSYNC:
+		  debug_str("EV_LOST_TSYNC\r\n");
+		  break;
+	  case EV_RESET:
+		  debug_str("EV_RESET\r\n");
+		  break;
+	  case EV_RXCOMPLETE:
+		  // data received in ping slot
+		  debug_str("EV_RXCOMPLETE\r\n");
+		  break;
+	  case EV_LINK_DEAD:
+		  debug_str("EV_LINK_DEAD\r\n");
+		  break;
+	  case EV_LINK_ALIVE:
+		  debug_str("EV_LINK_ALIVE\r\n");
+		  break;
+	  default:
+		   debug_str("Unknown event\r\n");
+		  break;
+    }
+}
 
 /* USER CODE END 0 */
 
@@ -101,8 +225,25 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM21_Init();
   /* USER CODE BEGIN 2 */
+    HAL_TIM_Base_Start_IT(&htim21);    // <-----------  change to your setup
+    __HAL_SPI_ENABLE(&hspi1);         // <-----------  change to your setup
 
-  /* USER CODE END 2 */
+    osjob_t initjob;
+
+    // initialize runtime env
+    os_init();
+
+    // initialize debug library
+    debug_init();
+    // setup initial job
+     os_setCallback(&initjob, initfunc);
+    // execute scheduled jobs and events
+    os_runloop();
+    // (not reached)
+    return 0;
+
+
+    /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
