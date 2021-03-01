@@ -42,9 +42,9 @@ stm32l0xx_hal_tim.c:2460:19:HAL_TIM_OnePulse_Init	16	static
 stm32l0xx_hal_tim.c:2528:19:HAL_TIM_OnePulse_DeInit	16	static
 stm32l0xx_hal_tim.c:2571:13:HAL_TIM_OnePulse_MspInit	16	static
 stm32l0xx_hal_tim.c:2586:13:HAL_TIM_OnePulse_MspDeInit	16	static
-stm32l0xx_hal_tim.c:2605:19:HAL_TIM_OnePulse_Start	24	static
+stm32l0xx_hal_tim.c:2605:19:HAL_TIM_OnePulse_Start	32	static
 stm32l0xx_hal_tim.c:2649:19:HAL_TIM_OnePulse_Stop	16	static
-stm32l0xx_hal_tim.c:2683:19:HAL_TIM_OnePulse_Start_IT	24	static
+stm32l0xx_hal_tim.c:2683:19:HAL_TIM_OnePulse_Start_IT	32	static
 stm32l0xx_hal_tim.c:2733:19:HAL_TIM_OnePulse_Stop_IT	16	static
 stm32l0xx_hal_tim.c:2804:19:HAL_TIM_Encoder_Init	32	static
 stm32l0xx_hal_tim.c:2918:19:HAL_TIM_Encoder_DeInit	16	static

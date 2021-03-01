@@ -18,6 +18,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_gpio_ex.h \
  ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_dma.h \
  ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_cortex.h \
+ ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_adc.h \
+ ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_adc_ex.h \
  ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_flash.h \
  ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_flash_ex.h \
  ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_flash_ramfunc.h \
@@ -31,7 +33,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_uart.h \
  ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_uart_ex.h \
  ../Core/Inc/lmic.h ../Core/Inc/oslmic.h ../Core/Inc/hal.h \
- ../Core/Inc/lorabase.h ../Core/Inc/debug.h
+ ../Core/Inc/lorabase.h ../Core/Inc/debug.h ../Core/Src/BMP280/bmp280.h
 
 ../Core/Inc/main.h:
 
@@ -73,6 +75,10 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 
 ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_cortex.h:
 
+../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_adc.h:
+
+../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_adc_ex.h:
+
 ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_flash.h:
 
 ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_flash_ex.h:
@@ -106,3 +112,5 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Core/Inc/lorabase.h:
 
 ../Core/Inc/debug.h:
+
+../Core/Src/BMP280/bmp280.h:
