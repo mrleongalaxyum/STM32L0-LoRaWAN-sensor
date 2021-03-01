@@ -3,7 +3,7 @@ stm32l0xx_hal_rcc.c:338:19:HAL_RCC_OscConfig	56	static
 stm32l0xx_hal_rcc.c:859:19:HAL_RCC_ClockConfig	32	static
 stm32l0xx_hal_rcc.c:1120:6:HAL_RCC_MCOConfig	56	static
 stm32l0xx_hal_rcc.c:1177:6:HAL_RCC_EnableCSS	8	static
-stm32l0xx_hal_rcc.c:1213:10:HAL_RCC_GetSysClockFreq	80	static
+stm32l0xx_hal_rcc.c:1213:10:HAL_RCC_GetSysClockFreq	72	static
 stm32l0xx_hal_rcc.c:1283:10:HAL_RCC_GetHCLKFreq	8	static
 stm32l0xx_hal_rcc.c:1294:10:HAL_RCC_GetPCLK1Freq	8	static
 stm32l0xx_hal_rcc.c:1306:10:HAL_RCC_GetPCLK2Freq	8	static

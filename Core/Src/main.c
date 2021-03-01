@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
+  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
   * This software component is licensed by ST under BSD 3-Clause license,
@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "lmic.h"
 #include "debug.h"
+#include "BMP280/bmp280.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,11 +45,19 @@
 
 
 /* USER CODE BEGIN PV */
+BMP280_HandleTypedef bmp280;
+
+int32_t temperature;
+uint32_t pressure, humidity;
+uint16_t battery_level;
+
+uint8_t repeat_period = 60; //number of seconds to wait before measurement loop repetition
+
 /* Private variables ---------------------------------------------------------*/
 // application router ID (LSBF)  < ------- IMPORTANT
-static const u1_t APPEUI[8]  = {0xB2,0x5C,0x03,0xD0,0x7E,0xD5,0xB3,0x70};
+static const u1_t APPEUI[8]  = { 0xB2, 0x5C, 0x03, 0xD0, 0x7E, 0xD5, 0xB3, 0x70 };
 // unique device ID (LSBF)       < ------- IMPORTANT
-static const u1_t DEVEUI[8]  = {0x06, 0x14,0xA0,0x16,0x20,0xD4,0x8A,0x00};
+static const u1_t DEVEUI[8]  = { 0x06, 0x14,0xA0,0x16,0x20,0xD4,0x8A,0x00 };
 
 // device-specific AES key (derived from device EUI)
 static const u1_t DEVKEY[16] = { 0x7A, 0x7F, 0x99, 0x33, 0xD6, 0x59, 0x1D, 0x6E, 0xDA, 0x75, 0x01, 0x19, 0x41, 0x64, 0x21, 0x44 };
@@ -62,13 +71,13 @@ static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM21_Init(void);
+static void MX_ADC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
 // provide application router ID (8 bytes, LSBF)
 void os_getArtEui (u1_t* buf) {
     memcpy(buf, APPEUI, 8);
@@ -85,7 +94,16 @@ void os_getDevKey (u1_t* buf) {
 }
 
 void initsensor(){
-	 // Here you init your sensors
+	 // init sensors
+	bmp280_init_default_params(&bmp280.params);
+	bmp280.addr = BMP280_I2C_ADDRESS_0;
+	bmp280.i2c = &hi2c1;
+
+	while (!bmp280_init(&bmp280, &bmp280.params)) {
+		debug_str("BMP280 initialization failed\n\r");
+		HAL_Delay(1000);
+	}
+	debug_str("BME280 found\n\r");
 }
 
 void initfunc (osjob_t* j) {
@@ -98,24 +116,50 @@ void initfunc (osjob_t* j) {
     // init done - onEvent() callback will be invoked...
 }
 
-u2_t readsensor(){
-	u2_t value = 0xDF;    /// read from evrything ...make your own sensor
-	return value;
+bool readsensor(){
+	HAL_ADC_Start(&hadc);
+	HAL_ADC_PollForConversion(&hadc, HAL_MAX_DELAY);
+	battery_level = HAL_ADC_GetValue(&hadc);
+
+	if (bmp280_read_fixed(&bmp280, &temperature, &pressure, &humidity)) {
+		return true;
+	}
+	return false;
 }
 
 static osjob_t reportjob;
 
 // report sensor value every minute
 static void reportfunc (osjob_t* j) {
-    // read sensor
-    u2_t val = readsensor();
-    debug_val("val = ", val);
-    // prepare and schedule data for transmission
-    LMIC.frame[0] = val << 8;
-    LMIC.frame[1] = val;
-    LMIC_setTxData2(1, LMIC.frame, 2, 0); // (port 1, 2 bytes, unconfirmed)
+	// read sensor
+	if (readsensor()) {
+		// if reading was successful
+		debug_val("temp = ", temperature);
+		debug_val("pres = ", pressure);
+		debug_val("hum = ", humidity);
+		debug_val("volt = ", battery_level);
+
+		// prepare and schedule data for transmission
+		LMIC.frame[1] = battery_level;
+		LMIC.frame[0] = battery_level >> 8;
+
+		for (int i = 0; i < 4; i++) {
+			LMIC.frame[13 - i] = temperature >> i * 8; // temperature -> bytes 8 - 11
+			LMIC.frame[9 - i] = pressure >> i * 8; // pressure -> bytes 4 - 7
+			LMIC.frame[5 - i] = humidity >> i * 8; // humidity -> bytes 0 - 3
+		}
+	} else {
+		// if reading was unsuccessful
+		debug_str("Reading failed\n\r");
+
+		for (int i = 0; i < 12; i++) {
+			LMIC.frame[i + 2] = 0xff; // error value
+		}
+	}
+
+    LMIC_setTxData2(1, LMIC.frame, 14, 0); // (port 1, 14 bytes, unconfirmed)
     // reschedule job in 60 seconds
-    os_setTimedCallback(j, os_getTime()+sec2osticks(10), reportfunc);
+    os_setTimedCallback(j, os_getTime()+sec2osticks(repeat_period), reportfunc);
 }
 
 
@@ -189,7 +233,6 @@ void onEvent (ev_t ev) {
 		  break;
     }
 }
-
 /* USER CODE END 0 */
 
 /**
@@ -224,26 +267,30 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI1_Init();
   MX_TIM21_Init();
+  MX_ADC_Init();
   /* USER CODE BEGIN 2 */
-    HAL_TIM_Base_Start_IT(&htim21);    // <-----------  change to your setup
-    __HAL_SPI_ENABLE(&hspi1);         // <-----------  change to your setup
 
-    osjob_t initjob;
+  HAL_TIM_Base_Start_IT(&htim21);    // <-----------  change to your setup
+   __HAL_SPI_ENABLE(&hspi1);         // <-----------  change to your setup
 
-    // initialize runtime env
-    os_init();
+   osjob_t initjob;
 
-    // initialize debug library
-    debug_init();
-    // setup initial job
-     os_setCallback(&initjob, initfunc);
-    // execute scheduled jobs and events
-    os_runloop();
-    // (not reached)
-    return 0;
+   // initialize runtime env
+   os_init();
 
+   // initialize debug library
+   debug_init();
 
-    /* USER CODE END 2 */
+   // setup initial job
+    os_setCallback(&initjob, initfunc);
+
+   // execute scheduled jobs and events
+   os_runloop();
+
+   // (not reached)
+   return 0;
+
+  /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -252,7 +299,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+	    	  }
   /* USER CODE END 3 */
 }
 
@@ -303,6 +350,60 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief ADC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC_Init(void)
+{
+
+  /* USER CODE BEGIN ADC_Init 0 */
+
+  /* USER CODE END ADC_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC_Init 1 */
+
+  /* USER CODE END ADC_Init 1 */
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+  */
+  hadc.Instance = ADC1;
+  hadc.Init.OversamplingMode = DISABLE;
+  hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc.Init.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;
+  hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc.Init.ContinuousConvMode = DISABLE;
+  hadc.Init.DiscontinuousConvMode = DISABLE;
+  hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc.Init.DMAContinuousRequests = DISABLE;
+  hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc.Init.LowPowerAutoWait = DISABLE;
+  hadc.Init.LowPowerFrequencyMode = DISABLE;
+  hadc.Init.LowPowerAutoPowerOff = DISABLE;
+  if (HAL_ADC_Init(&hadc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel to be converted.
+  */
+  sConfig.Channel = ADC_CHANNEL_0;
+  sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
+  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC_Init 2 */
+
+  /* USER CODE END ADC_Init 2 */
+
 }
 
 /**
@@ -543,10 +644,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -562,7 +660,7 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

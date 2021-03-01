@@ -39,7 +39,7 @@ lmic.c:292:5:getSensitivity	24	static
 lmic.c:296:10:calcAirTime	40	static
 lmic.c:406:17:calcRxWindow	40	static
 lmic.c:426:13:calcBcnRxWindowFromMillis	32	static
-lmic.c:440:13:rxschedInit	40	static
+lmic.c:440:13:rxschedInit	32	static
 lmic.c:457:14:rxschedNext	32	static
 lmic.c:475:17:rndDelay	32	static
 lmic.c:486:13:txDelay	16	static
@@ -54,7 +54,7 @@ lmic.c:620:6:LMIC_disableChannel	16	static
 lmic.c:626:13:convFreq	24	static
 lmic.c:633:13:mapChannels	24	static
 lmic.c:646:13:updateTx	32	static
-lmic.c:659:17:nextTx	32	static
+lmic.c:659:17:nextTx	40	static
 lmic.c:688:13:setBcnRxParams	8	static
 lmic.c:696:13:initJoinLoop	16	static
 lmic.c:710:17:nextJoinState	16	static
@@ -63,7 +63,7 @@ lmic.c:910:13:reportEvent	16	static
 lmic.c:919:13:runReset	16	static
 lmic.c:926:13:stateJustJoined	8	static
 lmic.c:947:12:decodeBeacon	24	static
-lmic.c:983:14:decodeFrame	128	static
+lmic.c:983:14:decodeFrame	120	static
 lmic.c:1275:13:setupRx2	8	static
 lmic.c:1284:13:schedRx2	16	static
 lmic.c:1290:13:setupRx1	16	static
