@@ -51,7 +51,7 @@ int32_t temperature;
 uint32_t pressure, humidity;
 uint16_t battery_level;
 
-uint8_t repeat_period = 60; //number of seconds to wait before measurement loop repetition
+uint8_t repeat_period = 900; //number of seconds to wait before measurement loop repetition
 
 /* Private variables ---------------------------------------------------------*/
 // application router ID (LSBF)  < ------- IMPORTANT

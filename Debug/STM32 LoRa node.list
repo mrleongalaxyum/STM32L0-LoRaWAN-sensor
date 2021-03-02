@@ -1088,29 +1088,29 @@ void bmp280_init_default_params(bmp280_params_t *params) {
  80008c2:	b082      	sub	sp, #8
  80008c4:	af00      	add	r7, sp, #0
  80008c6:	6078      	str	r0, [r7, #4]
-	params->mode = BMP280_MODE_NORMAL;
+	params->mode = BMP280_MODE_FORCED;
  80008c8:	687b      	ldr	r3, [r7, #4]
- 80008ca:	2203      	movs	r2, #3
+ 80008ca:	2201      	movs	r2, #1
  80008cc:	701a      	strb	r2, [r3, #0]
 	params->filter = BMP280_FILTER_OFF;
  80008ce:	687b      	ldr	r3, [r7, #4]
  80008d0:	2200      	movs	r2, #0
  80008d2:	705a      	strb	r2, [r3, #1]
-	params->oversampling_pressure = BMP280_STANDARD;
+	params->oversampling_pressure = BMP280_ULTRA_LOW_POWER;
  80008d4:	687b      	ldr	r3, [r7, #4]
- 80008d6:	2203      	movs	r2, #3
+ 80008d6:	2201      	movs	r2, #1
  80008d8:	709a      	strb	r2, [r3, #2]
-	params->oversampling_temperature = BMP280_STANDARD;
+	params->oversampling_temperature = BMP280_ULTRA_LOW_POWER;
  80008da:	687b      	ldr	r3, [r7, #4]
- 80008dc:	2203      	movs	r2, #3
+ 80008dc:	2201      	movs	r2, #1
  80008de:	70da      	strb	r2, [r3, #3]
-	params->oversampling_humidity = BMP280_STANDARD;
+	params->oversampling_humidity = BMP280_ULTRA_LOW_POWER;
  80008e0:	687b      	ldr	r3, [r7, #4]
- 80008e2:	2203      	movs	r2, #3
+ 80008e2:	2201      	movs	r2, #1
  80008e4:	711a      	strb	r2, [r3, #4]
-	params->standby = BMP280_STANDBY_250;
+	params->standby = BMP280_STANDBY_1000;
  80008e6:	687b      	ldr	r3, [r7, #4]
- 80008e8:	2203      	movs	r2, #3
+ 80008e8:	2205      	movs	r2, #5
  80008ea:	715a      	strb	r2, [r3, #5]
 }
  80008ec:	46c0      	nop			; (mov r8, r8)
