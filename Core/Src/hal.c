@@ -119,8 +119,8 @@ void hal_spi_init () {
 
 // perform SPI transaction with radio
 u1_t hal_spi (u1_t out) {
-	char outbuffer[] ="";
-	char inbuffer[] ="";
+	unsigned char outbuffer[] ="";
+	unsigned char inbuffer[] ="";
 	outbuffer[0] = out;
 	HAL_SPI_TransmitReceive(&mySPI,outbuffer,inbuffer,sizeof(outbuffer),HAL_MAX_DELAY);
 	return inbuffer[0];

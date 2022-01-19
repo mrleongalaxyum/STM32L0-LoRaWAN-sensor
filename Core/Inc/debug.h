@@ -47,6 +47,9 @@ void debug_uint (u4_t v);
 // write 32-bit integer as signed decimal digits to USART
 void debug_int (s4_t v);
 
+// write 32-bit floating point number to USART
+void debug_f (float f);
+
 // write nul-terminated string to USART
 void debug_str (const char* str);
 

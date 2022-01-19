@@ -33,7 +33,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_uart.h \
  ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_uart_ex.h \
  ../Core/Inc/lmic.h ../Core/Inc/oslmic.h ../Core/Inc/hal.h \
- ../Core/Inc/lorabase.h ../Core/Inc/debug.h ../Core/Src/BMP280/bmp280.h
+ ../Core/Inc/lorabase.h ../Core/Inc/sdp800.h ../Core/Inc/system.h \
+ ../Core/Inc/debug.h
 
 ../Core/Inc/main.h:
 
@@ -111,6 +112,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 
 ../Core/Inc/lorabase.h:
 
-../Core/Inc/debug.h:
+../Core/Inc/sdp800.h:
 
-../Core/Src/BMP280/bmp280.h:
+../Core/Inc/system.h:
+
+../Core/Inc/debug.h:

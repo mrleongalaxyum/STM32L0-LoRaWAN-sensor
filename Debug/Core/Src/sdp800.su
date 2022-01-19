@@ -1,0 +1,9 @@
+sdp800.c:51:6:Sdp800_Init	16	static
+sdp800.c:57:7:Sdp800_StartContinousMeasurement	32	static
+sdp800.c:99:7:Sdp800_StopContinousMeasurement	8	static
+sdp800.c:105:7:Sdp800_ReadMeasurementResults	40	static
+sdp800.c:124:7:Sdp800_SoftReset	24	static
+sdp800.c:148:14:ReadMeasurementRawResults	40	static
+sdp800.c:181:7:ExecuteCommand	32	static
+sdp800.c:207:14:ReadWordWithCrcCheck	40	static
+sdp800.c:228:14:CheckCrc	32	static

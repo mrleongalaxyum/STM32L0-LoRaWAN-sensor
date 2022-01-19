@@ -28,6 +28,7 @@
 #include "main.h"
 #include "debug.h"
 #include "lmic.h"
+#include <stdio.h>
 
 #define myUART huart2   //  <--------- change to your setup
 
@@ -50,7 +51,7 @@ void debug_led (int val) {
 }
 
 void debug_char (char c) {
-  char buffer[] = "";
+  unsigned char buffer[] = "";
   buffer[0]= c;
   HAL_UART_Transmit(&myUART,buffer,sizeof(buffer),HAL_MAX_DELAY);
 }
@@ -86,6 +87,10 @@ void debug_str (const char* str) {
     while(*str) {
         debug_char(*str++);
     }
+}
+
+void debug_f (float f) {
+	debug_int((int)f);
 }
 
 void debug_val (const char* label, u4_t val) {

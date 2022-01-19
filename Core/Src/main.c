@@ -23,8 +23,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "lmic.h"
+#include "sdp800.h"
 #include "debug.h"
-#include "BMP280/bmp280.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,22 +43,31 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc;
 
+SPI_HandleTypeDef hspi1;
+
+TIM_HandleTypeDef htim21;
+
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-BMP280_HandleTypedef bmp280;
 
-int32_t temperature;
-uint32_t pressure, humidity;
-uint16_t battery_level;
+Error error;
+float diffPressure;
+float temperature;
 
-uint8_t repeat_period = 900; //number of seconds to wait before measurement loop repetition
+//int32_t temperature;
+//uint32_t pressure, humidity;
+//uint16_t battery_level;
+
+__uint8_t repeat_period = 1; //number of seconds to wait before measurement loop repetition
 
 /* Private variables ---------------------------------------------------------*/
 // application router ID (LSBF)  < ------- IMPORTANT
 static const u1_t APPEUI[8]  = { 0xB2, 0x5C, 0x03, 0xD0, 0x7E, 0xD5, 0xB3, 0x70 };
 // unique device ID (LSBF)       < ------- IMPORTANT
-static const u1_t DEVEUI[8]  = { 0x06, 0x14,0xA0,0x16,0x20,0xD4,0x8A,0x00 };
+static const u1_t DEVEUI[8]  = { 0x06, 0x14, 0xA0, 0x16, 0x20, 0xD4, 0x8A, 0x00 };
 
 // device-specific AES key (derived from device EUI)
 static const u1_t DEVKEY[16] = { 0x7A, 0x7F, 0x99, 0x33, 0xD6, 0x59, 0x1D, 0x6E, 0xDA, 0x75, 0x01, 0x19, 0x41, 0x64, 0x21, 0x44 };
@@ -68,7 +78,6 @@ static const u1_t DEVKEY[16] = { 0x7A, 0x7F, 0x99, 0x33, 0xD6, 0x59, 0x1D, 0x6E,
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM21_Init(void);
 static void MX_ADC_Init(void);
@@ -94,16 +103,15 @@ void os_getDevKey (u1_t* buf) {
 }
 
 void initsensor(){
-	 // init sensors
-	bmp280_init_default_params(&bmp280.params);
-	bmp280.addr = BMP280_I2C_ADDRESS_0;
-	bmp280.i2c = &hi2c1;
-
-	while (!bmp280_init(&bmp280, &bmp280.params)) {
-		debug_str("BMP280 initialization failed\n\r");
-		HAL_Delay(1000);
-	}
-	debug_str("BME280 found\n\r");
+	// init sensors
+	Sdp800_Init(0x25);
+	Sdp800_SoftReset();
+	error = Sdp800_StartContinousMeasurement(SDP800_TEMPCOMP_MASS_FLOW,
+		                                             SDP800_AVERAGING_TILL_READ);
+	if (error == ERROR_NONE)
+		debug_str("SDP800 initialized\n\r");
+	else
+		debug_str("SDP800 failed to initialize\n\r");
 }
 
 void initfunc (osjob_t* j) {
@@ -116,15 +124,9 @@ void initfunc (osjob_t* j) {
     // init done - onEvent() callback will be invoked...
 }
 
-bool readsensor(){
-	HAL_ADC_Start(&hadc);
-	HAL_ADC_PollForConversion(&hadc, HAL_MAX_DELAY);
-	battery_level = HAL_ADC_GetValue(&hadc);
-
-	if (bmp280_read_fixed(&bmp280, &temperature, &pressure, &humidity)) {
-		return true;
-	}
-	return false;
+int readsensor(){
+	error = Sdp800_ReadMeasurementResults(&diffPressure, &temperature);
+	return error == ERROR_NONE;
 }
 
 static osjob_t reportjob;
@@ -133,32 +135,27 @@ static osjob_t reportjob;
 static void reportfunc (osjob_t* j) {
 	// read sensor
 	if (readsensor()) {
-		// if reading was successful
-		debug_val("temp = ", temperature);
-		debug_val("pres = ", pressure);
-		debug_val("hum = ", humidity);
-		debug_val("volt = ", battery_level);
+		// if reading was a success:
+		debug_str("Reading success: ");
+		debug_f(diffPressure);
+		debug_str(", ");
+		debug_f(temperature);
+		debug_str("\n\r");
 
-		// prepare and schedule data for transmission
-		LMIC.frame[1] = battery_level;
-		LMIC.frame[0] = battery_level >> 8;
-
-		for (int i = 0; i < 4; i++) {
-			LMIC.frame[13 - i] = temperature >> i * 8; // temperature -> bytes 8 - 11
-			LMIC.frame[9 - i] = pressure >> i * 8; // pressure -> bytes 4 - 7
-			LMIC.frame[5 - i] = humidity >> i * 8; // humidity -> bytes 0 - 3
-		}
+		memcpy(LMIC.frame + 0, &diffPressure, 4);
+		memcpy(LMIC.frame + 4, &temperature, 4);
+		//}
 	} else {
 		// if reading was unsuccessful
 		debug_str("Reading failed\n\r");
 
-		for (int i = 0; i < 12; i++) {
-			LMIC.frame[i + 2] = 0xff; // error value
+		for (int i = 0; i < 8; i++) {
+			LMIC.frame[i] = 0xff; // error value
 		}
 	}
 
-    LMIC_setTxData2(1, LMIC.frame, 14, 0); // (port 1, 14 bytes, unconfirmed)
-    // reschedule job in 60 seconds
+    LMIC_setTxData2(1, LMIC.frame, 8, 0); // (port 1, 8 bytes, unconfirmed)
+    // reschedule job after 'repeat_period' seconds
     os_setTimedCallback(j, os_getTime()+sec2osticks(repeat_period), reportfunc);
 }
 
@@ -208,7 +205,7 @@ void onEvent (ev_t ev) {
 			  debug_str("Received ack\r\n");
 		  if (LMIC.dataLen) {
 			  debug_str("Received ");
-			  debug_str(LMIC.dataLen);
+			  debug_int(LMIC.dataLen);
 			  debug_str(" bytes of payload\r\n");
 		  }
 		  break;
@@ -264,7 +261,6 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_I2C1_Init();
   MX_SPI1_Init();
   MX_TIM21_Init();
   MX_ADC_Init();
@@ -282,14 +278,15 @@ int main(void)
    debug_init();
 
    // setup initial job
-    os_setCallback(&initjob, initfunc);
+   os_setCallback(&initjob, initfunc);
+
+   Sdp800_Init(0x25); // initialize sensor module with address 0x25
 
    // execute scheduled jobs and events
    os_runloop();
 
    // (not reached)
    return 0;
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -343,9 +340,8 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_I2C1;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
-  PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
@@ -403,52 +399,6 @@ static void MX_ADC_Init(void)
   /* USER CODE BEGIN ADC_Init 2 */
 
   /* USER CODE END ADC_Init 2 */
-
-}
-
-/**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C1_Init(void)
-{
-
-  /* USER CODE BEGIN I2C1_Init 0 */
-
-  /* USER CODE END I2C1_Init 0 */
-
-  /* USER CODE BEGIN I2C1_Init 1 */
-
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00707CBB;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure Analogue filter
-  */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure Digital filter
-  */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C1_Init 2 */
-
-  /* USER CODE END I2C1_Init 2 */
 
 }
 
@@ -621,6 +571,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = DIO2_Pin|DIO1_Pin|DIO0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = GPIO_PIN_9;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/

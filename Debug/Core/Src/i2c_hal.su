@@ -1,0 +1,5 @@
+i2c_hal.c:13:6:I2c_Init	8	static
+i2c_hal.c:20:6:I2c_StartCondition	8	static
+i2c_hal.c:33:6:I2c_StopCondition	8	static
+i2c_hal.c:46:7:I2c_WriteByte	24	static
+i2c_hal.c:69:9:I2c_ReadByte	24	static
